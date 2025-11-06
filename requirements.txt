@@ -7,8 +7,7 @@ xgboost>=1.7.0
 # Sentence embeddings (CPU-only)
 sentence-transformers>=2.2.0
 # Force CPU torch version to avoid GPU/CUDA downloads
-torch==2.2.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-
+torch==2.3.0 
 # OCR / Image processing (CPU optimized)
 easyocr>=1.7.0
 opencv-python-headless>=4.8.0   # smaller than opencv-python, avoids GUI deps
