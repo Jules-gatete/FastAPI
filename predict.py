@@ -13,7 +13,8 @@ try:
 except ImportError as e:
     print(f"Error importing modules: {e}")
     print("Please ensure all dependencies are installed: pip install -r requirements.txt")
-    sys.exit(1)
+    # Raise ImportError instead of exiting the interpreter so callers can handle the failure.
+    raise ImportError(f"Error importing core modules: {e}")
 
 # Import OCR extractor (optional - may fail if OCR dependencies not available)
 try:
@@ -41,7 +42,8 @@ except (ImportError, Exception) as e:
         print(f"Error: Could not import prediction functions from test.py")
         print(f"Details: {e}")
         print("Please ensure test.py exists and models are trained.")
-    sys.exit(1)
+    # Raise ImportError so callers (for example api.py) can detect and handle missing prediction functionality
+    raise ImportError(f"Error importing prediction functions: {e}")
 
 def predict_from_input(input_data, output_format='full'):
     """
