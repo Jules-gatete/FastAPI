@@ -1,20 +1,17 @@
 # Core libraries
 pandas>=1.5.0
-numpy>=1.23.0,<2.0.0
-scikit-learn>=1.2.0
-xgboost>=1.7.0
+numpy>=1.25.0
+scikit-learn>=1.3.0
+xgboost==3.1.1
 
 # Sentence embeddings (CPU-only)
 sentence-transformers>=2.2.0
-# Force CPU torch version to avoid GPU/CUDA downloads
-torch==2.3.0 
+torch==2.3.0
+
 # OCR / Image processing (CPU optimized)
 easyocr>=1.7.0
-opencv-python-headless>=4.8.0   # smaller than opencv-python, avoids GUI deps
+opencv-python-headless>=4.8.0
 Pillow>=10.0.0
-
-# Optional: only needed for Python < 3.8
-pickle5>=0.0.11; python_version < "3.8"
 
 # API / Server
 fastapi>=0.104.0
