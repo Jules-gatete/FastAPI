@@ -7,6 +7,8 @@ Handles text normalization automatically.
 
 import pickle
 import os
+import csv
+from pathlib import Path
 import numpy as np
 import re
 from sentence_transformers import SentenceTransformer
@@ -14,6 +16,38 @@ from sklearn.neighbors import NearestNeighbors
 
 # Configuration
 MODELS_DIR = 'models'
+BASE_DIR = Path(__file__).resolve().parent
+DISPOSAL_METHOD_FILE = BASE_DIR / 'disposal_method.csv'
+
+
+def _load_disposal_category_lookup():
+    """Load disposal category metadata from disposal_method.csv.
+
+    Returns a dict keyed by the code (as string) containing human readable
+    category details plus recommended handling / disposal guidance.
+    """
+    if not DISPOSAL_METHOD_FILE.exists():
+        return {}
+
+    lookup = {}
+    try:
+        with DISPOSAL_METHOD_FILE.open(mode='r', encoding='utf-8-sig', newline='') as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                code = str(row.get('S. No.', '')).strip()
+                if not code:
+                    continue
+
+                lookup[code] = {
+                    'category': (row.get('Category of Drug/Dosage Form/Packaging') or '').strip(),
+                    'handling_method': (row.get('Handling Method') or '').strip(),
+                    'disposal_method': (row.get('Method of Disposal') or '').strip(),
+                    'remarks': (row.get('Remarks') or '').strip(),
+                }
+    except Exception:
+        return {}
+
+    return lookup
 
 def normalize_text(text):
     """Normalize text: lowercase, strip, remove extra spaces."""
@@ -163,6 +197,15 @@ def load_models():
     else:
         models['normalization_mappings'] = None
         print("  ⚠ Normalization mappings not found (using old model format)")
+
+    # Load disposal category metadata (optional)
+    disposal_lookup = _load_disposal_category_lookup()
+    if disposal_lookup:
+        models['disposal_category_lookup'] = disposal_lookup
+        print("  ✓ Loaded disposal category metadata")
+    else:
+        models['disposal_category_lookup'] = {}
+        print("  ⚠ Disposal category metadata not found (predictions will show raw codes)")
     
     # Load two-stage models for Dosage Form and Manufacturer
     two_stage_models = {}
@@ -445,10 +488,30 @@ def predict_all(models, generic_name, top_k=3):
             category_classes = np.array(['unknown'])
     except Exception:
         category_classes = np.array(['unknown'])
-    predictions['disposal_category'] = {
-        'value': category_classes[category_idx],
+    raw_category = category_classes[category_idx]
+    category_code = str(raw_category)
+    disposal_lookup = models.get('disposal_category_lookup') or {}
+    meta = disposal_lookup.get(category_code)
+    display_value = meta.get('category') if meta and meta.get('category') else raw_category
+    display_value = str(display_value) if display_value is not None else ''
+    raw_category_str = str(raw_category)
+
+    disposal_entry = {
+        'code': category_code,
+        'value': display_value,
+        'raw_value': raw_category_str,
         'confidence': float(category_proba[category_idx])
     }
+
+    if meta:
+        if meta.get('handling_method'):
+            disposal_entry['handling_method'] = meta['handling_method']
+        if meta.get('disposal_method'):
+            disposal_entry['recommended_disposal'] = meta['disposal_method']
+        if meta.get('remarks'):
+            disposal_entry['remarks'] = meta['remarks']
+
+    predictions['disposal_category'] = disposal_entry
     
     # 4. Predict Method of Disposal (multi-label, use combined features)
     # Ensure compatibility for tree-based estimators inside the multi-output classifier
